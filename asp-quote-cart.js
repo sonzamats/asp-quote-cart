@@ -16,17 +16,26 @@
     ".gallery-reel-item img",
     "img.gallery-item-image",
     ".sqs-gallery img",
-    ".sqs-block-image img"        // <-- confirmed: matches your 29 rental images
+    ".sqs-block-image img"
   ].join(",");
+  // Pages where add-to-quote must NOT appear (general landing pages).
+  var LANDING_PATHS = ["/", "/products", "/rentals", "/partyrentals"];
   /* ================================ */
+
+  function currentPath() {
+    var p = location.pathname.replace(/\/+$/, "");
+    return p === "" ? "/" : p;
+  }
+  function pageAllowed() { return LANDING_PATHS.indexOf(currentPath()) === -1; }
 
   /* ---- inject CSS from JS (no HTML field to smart-quote) ---- */
   var CSS = [
-    ".aqc-add-btn{position:absolute;top:10px;right:10px;z-index:50;display:inline-flex;align-items:center;gap:6px;background:rgba(20,20,20,.82);color:#fff;border:none;border-radius:999px;padding:8px 12px;font:600 13px/1 -apple-system,Segoe UI,Roboto,sans-serif;cursor:pointer;opacity:0;transition:opacity .18s,transform .18s,background .18s;pointer-events:auto;}",
+    ".aqc-add-btn{position:absolute;top:10px;right:10px;z-index:50;display:inline-flex;align-items:center;gap:7px;background:rgba(20,20,20,.82);color:#fff;border:none;border-radius:999px;padding:8px 13px;font:600 13px/1 -apple-system,Segoe UI,Roboto,sans-serif;cursor:pointer;opacity:0;transition:opacity .18s,transform .18s,background .18s;pointer-events:auto;}",
     ".aqc-anchor:hover .aqc-add-btn{opacity:1;}",
     ".aqc-add-btn:hover{background:#000;transform:translateY(-1px);}",
     ".aqc-add-btn.aqc-in{opacity:1;background:#2e7d32;}",
-    ".aqc-add-btn svg{width:15px;height:15px;}",
+    ".aqc-add-btn svg{width:16px;height:16px;flex:none;}",
+    ".aqc-add-btn .aqc-qty{min-width:16px;text-align:center;font-weight:700;}",
     "@media (hover:none){.aqc-add-btn{opacity:1;}}",
     ".aqc-pill{position:fixed;right:20px;bottom:20px;z-index:9998;display:none;align-items:center;gap:8px;background:#111;color:#fff;border:none;border-radius:999px;padding:14px 20px;font:600 15px/1 -apple-system,Segoe UI,Roboto,sans-serif;box-shadow:0 8px 28px rgba(0,0,0,.28);cursor:pointer;}",
     ".aqc-pill.aqc-show{display:inline-flex;}",
@@ -41,7 +50,11 @@
     ".aqc-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #eee;}",
     ".aqc-item img{width:52px;height:52px;object-fit:cover;border-radius:8px;flex:none;}",
     ".aqc-item .aqc-name{flex:1;font-weight:600;}",
-    ".aqc-item .aqc-rm{background:none;border:none;color:#c00;cursor:pointer;font-size:13px;}",
+    ".aqc-stepper{display:inline-flex;align-items:center;gap:0;border:1px solid #ddd;border-radius:8px;overflow:hidden;}",
+    ".aqc-stepper button{width:30px;height:30px;border:none;background:#f4f4f4;cursor:pointer;font-size:16px;line-height:1;color:#111;}",
+    ".aqc-stepper button:hover{background:#e8e8e8;}",
+    ".aqc-stepper .aqc-n{min-width:30px;text-align:center;font-weight:700;}",
+    ".aqc-item .aqc-rm{background:none;border:none;color:#c00;cursor:pointer;font-size:13px;margin-left:4px;}",
     ".aqc-empty{color:#888;padding:20px 0;text-align:center;}",
     ".aqc-field{margin-bottom:12px;}",
     ".aqc-field label{display:block;font-weight:600;margin-bottom:4px;font-size:13px;}",
@@ -63,16 +76,33 @@
     document.head.appendChild(st);
   }
 
+  /* ---- cart model: items carry a quantity ---- */
   function load() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch (e) { return []; } }
   function save(c) { localStorage.setItem(STORAGE_KEY, JSON.stringify(c)); }
   var cart = load();
-  function inCart(id) { return cart.some(function (i) { return i.id === id; }); }
+  function find(id) { for (var i = 0; i < cart.length; i++) if (cart[i].id === id) return cart[i]; return null; }
+  function qtyOf(id) { var it = find(id); return it ? it.qty : 0; }
+  function totalQty() { return cart.reduce(function (s, i) { return s + i.qty; }, 0); }
 
+  /* ---- item name: prefer the product title block, not the alt description ---- */
   function nameFor(img) {
-    var fig = img.closest("figure, .gallery-grid-item, .gallery-masonry-item, .sqs-block-image");
+    // 1) true gallery caption, if present
+    var fig = img.closest("figure, .gallery-grid-item, .gallery-masonry-item");
     var cap = fig && fig.querySelector("figcaption, .gallery-caption, .gallery-caption-content, .image-caption");
-    var t = cap && cap.textContent.trim();
-    if (t) return t;
+    if (cap && cap.textContent.trim()) return cap.textContent.trim();
+    // 2) nearest title/text block AFTER the image block (category-page layout)
+    var block = img.closest(".sqs-block") || img;
+    var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT, null);
+    walker.currentNode = block;
+    var n;
+    while ((n = walker.nextNode())) {
+      if (block.contains(n)) continue;
+      if (/^(H1|H2|H3|H4|P)$/.test(n.tagName)) {
+        var t = n.textContent.trim();
+        if (t.length >= 2 && t.length <= 70 && t.indexOf("#block") !== 0) return t;
+      }
+    }
+    // 3) fallbacks
     if (img.alt && img.alt.trim()) return img.alt.trim();
     var src = img.currentSrc || img.src || "";
     var file = src.split("/").pop().split("?")[0].replace(/\.[a-z]+$/i, "");
@@ -87,11 +117,22 @@
     return s || nameFor(img);
   }
 
-  var PLUS  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
-  var CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
+  var CART = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 4h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>';
+
+  function paintBtn(btn, id) {
+    var q = qtyOf(id);
+    if (q > 0) {
+      btn.className = "aqc-add-btn aqc-in";
+      btn.innerHTML = CART + '<span class="aqc-qty">' + q + "</span>";
+    } else {
+      btn.className = "aqc-add-btn";
+      btn.innerHTML = CART + "<span>Add to quote</span>";
+    }
+  }
 
   function tag(img) {
     if (img.dataset.aqc) return;
+    if (img.closest("a")) return;              // skip linked category tiles
     if (img.naturalWidth && img.naturalWidth < 60) return;
     img.dataset.aqc = "1";
     var anchor = img.closest("figure, .gallery-grid-item, .gallery-masonry-item, .sqs-block-image") || img.parentElement;
@@ -102,27 +143,28 @@
     var id = idFor(img);
     var btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "aqc-add-btn" + (inCart(id) ? " aqc-in" : "");
-    btn.innerHTML = (inCart(id) ? CHECK : PLUS) + "<span>" + (inCart(id) ? "Added" : "Add to quote") + "</span>";
+    btn.dataset.aqcId = id;
+    paintBtn(btn, id);
     btn.addEventListener("click", function (e) {
       e.preventDefault();
       e.stopPropagation();
-      if (inCart(id)) {
-        cart = cart.filter(function (i) { return i.id !== id; });
-        btn.className = "aqc-add-btn";
-        btn.innerHTML = PLUS + "<span>Add to quote</span>";
-      } else {
-        cart.push({ id: id, name: nameFor(img), img: imgUrl(img) });
-        btn.className = "aqc-add-btn aqc-in";
-        btn.innerHTML = CHECK + "<span>Added</span>";
-      }
+      var it = find(id);
+      if (it) { it.qty += 1; }
+      else { cart.push({ id: id, name: nameFor(img), img: imgUrl(img), qty: 1 }); }
       save(cart);
+      paintBtn(btn, id);
       renderPill();
     });
     anchor.appendChild(btn);
   }
 
-  function scan() { document.querySelectorAll(IMG_SELECTORS).forEach(tag); }
+  function scan() { if (pageAllowed()) document.querySelectorAll(IMG_SELECTORS).forEach(tag); }
+
+  function syncButtons() {
+    document.querySelectorAll(".aqc-add-btn[data-aqc-id]").forEach(function (b) {
+      paintBtn(b, b.dataset.aqcId);
+    });
+  }
 
   var pill;
   function renderPill() {
@@ -133,7 +175,7 @@
       pill.addEventListener("click", openModal);
       document.body.appendChild(pill);
     }
-    pill.innerHTML = 'Request Quote <span class="aqc-count">' + cart.length + "</span>";
+    pill.innerHTML = 'Request Quote <span class="aqc-count">' + totalQty() + "</span>";
     pill.classList.toggle("aqc-show", cart.length > 0);
   }
 
@@ -170,32 +212,47 @@
     overlay.querySelector(".aqc-form").addEventListener("submit", submitQuote);
   }
 
+  function changeQty(id, delta) {
+    var it = find(id);
+    if (!it) return;
+    it.qty += delta;
+    if (it.qty <= 0) cart = cart.filter(function (x) { return x.id !== id; });
+    save(cart);
+    renderItems();
+    renderPill();
+    syncButtons();
+    if (!cart.length) closeModal();
+  }
+  function removeItem(id) {
+    cart = cart.filter(function (x) { return x.id !== id; });
+    save(cart);
+    renderItems();
+    renderPill();
+    syncButtons();
+    if (!cart.length) closeModal();
+  }
+
   function renderItems() {
     var ul = overlay.querySelector(".aqc-items");
     if (!cart.length) {
-      ul.innerHTML = '<li class="aqc-empty">No items yet. Tap Add to quote on any item.</li>';
+      ul.innerHTML = '<li class="aqc-empty">No items yet. Tap the cart icon on any item.</li>';
       return;
     }
     ul.innerHTML = "";
     cart.forEach(function (i) {
       var li = document.createElement("li");
       li.className = "aqc-item";
-      li.innerHTML = '<img src="' + i.img + '" alt=""><span class="aqc-name"></span><button type="button" class="aqc-rm">Remove</button>';
+      li.innerHTML =
+        '<img src="' + i.img + '" alt="">' +
+        '<span class="aqc-name"></span>' +
+        '<span class="aqc-stepper"><button type="button" class="aqc-dec">&minus;</button>' +
+        '<span class="aqc-n">' + i.qty + '</span>' +
+        '<button type="button" class="aqc-inc">+</button></span>' +
+        '<button type="button" class="aqc-rm">Remove</button>';
       li.querySelector(".aqc-name").textContent = i.name;   // textContent = no HTML-injection risk
-      li.querySelector(".aqc-rm").addEventListener("click", function () {
-        cart = cart.filter(function (x) { return x.id !== i.id; });
-        save(cart);
-        // reset any visible button for this item
-        document.querySelectorAll(".aqc-add-btn.aqc-in").forEach(function (b) {
-          b.className = "aqc-add-btn";
-          b.innerHTML = PLUS + "<span>Add to quote</span>";
-        });
-        document.querySelectorAll("img[data-aqc]").forEach(function (im) { delete im.dataset.aqc; });
-        scan();
-        renderItems();
-        renderPill();
-        if (!cart.length) closeModal();
-      });
+      li.querySelector(".aqc-dec").addEventListener("click", function () { changeQty(i.id, -1); });
+      li.querySelector(".aqc-inc").addEventListener("click", function () { changeQty(i.id, 1); });
+      li.querySelector(".aqc-rm").addEventListener("click", function () { removeItem(i.id); });
       ul.appendChild(li);
     });
   }
@@ -209,9 +266,9 @@
         msg  = form.querySelector(".aqc-msg"),
         btn  = form.querySelector(".aqc-submit");
     var data = Object.fromEntries(new FormData(form).entries());
-    data.items = cart.map(function (i) { return "- " + i.name; }).join("\n");
-    data.itemCount = cart.length;
-    data._subject = "Quote request (" + cart.length + " items) - " + (data.name || "");
+    data.items = cart.map(function (i) { return "- " + i.name + " (x" + i.qty + ")"; }).join("\n");
+    data.itemCount = totalQty();
+    data._subject = "Quote request (" + totalQty() + " items) - " + (data.name || "");
     btn.disabled = true;
     msg.className = "aqc-msg";
     msg.textContent = "Sending...";
@@ -226,6 +283,7 @@
       cart = [];
       save(cart);
       renderPill();
+      syncButtons();
       form.reset();
       setTimeout(closeModal, 1800);
     }).catch(function () {
