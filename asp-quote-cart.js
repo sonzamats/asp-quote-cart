@@ -192,13 +192,13 @@
         '<form class="aqc-form">' +
           '<div class="aqc-row">' +
             '<div class="aqc-field"><label>Name *</label><input name="name" required></div>' +
-            '<div class="aqc-field"><label>Phone *</label><input name="phone" required></div>' +
+            '<div class="aqc-field"><label>Phone</label><input name="phone"></div>' +
           "</div>" +
           '<div class="aqc-field"><label>Email *</label><input type="email" name="email" required></div>' +
-          '<div class="aqc-field"><label>Event location *</label><input name="location" required></div>' +
+          '<div class="aqc-field"><label>Event location</label><input name="location"></div>' +
           '<div class="aqc-row">' +
-            '<div class="aqc-field"><label>Event start *</label><input type="date" name="start" required></div>' +
-            '<div class="aqc-field"><label>Event end *</label><input type="date" name="end" required></div>' +
+            '<div class="aqc-field"><label>Event start</label><input type="date" name="start"></div>' +
+            '<div class="aqc-field"><label>Event end</label><input type="date" name="end"></div>' +
           "</div>" +
           '<div class="aqc-field"><label>Comments</label><textarea name="comments" rows="3"></textarea></div>' +
           '<button type="submit" class="aqc-submit">Send Quote Request</button>' +
