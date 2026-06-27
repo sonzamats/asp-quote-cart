@@ -18,15 +18,53 @@
     ".sqs-gallery img",
     ".sqs-block-image img"
   ].join(",");
-  // Pages where add-to-quote must NOT appear (general landing pages).
-  var LANDING_PATHS = ["/", "/products", "/rentals", "/partyrentals"];
+  // The two rental landing pages. Their linked category tiles define exactly
+  // which pages may show add-to-quote buttons (Rentals + Party Rentals only).
+  var RENTAL_LANDINGS = ["/products", "/partyrentals"];
+  // Fallback list of category pages (used if the live read above fails).
+  // Auto-extended at runtime, so new categories are picked up without editing this.
+  var ALLOW_SEED = [
+    "/mixers", "/interfaces", "/speakers-link", "/827709107501-1", "/microphone-link",
+    "/amps-and-racks", "/lighting-link", "/screensandprojectors", "/video-wall", "/cameras",
+    "/truss-link", "/stage-link", "/cable-and-wiring", "/atmospherics", "/communications",
+    "/network", "/power", "/pipe-and-drape", "/linens", "/tables-and-chairs", "/furniture",
+    "/carpetstep-and-repeat", "/dance-floor", "/dishware", "/decor-misc", "/dj-equipement",
+    "/instruments", "/amplifiers", "/carpet", "/tents"
+  ];
   /* ================================ */
 
-  function currentPath() {
-    var p = location.pathname.replace(/\/+$/, "");
+  function norm(href) {
+    var p = (href || "").split("?")[0].split("#")[0].replace(/\/+$/, "");
     return p === "" ? "/" : p;
   }
-  function pageAllowed() { return LANDING_PATHS.indexOf(currentPath()) === -1; }
+  function currentPath() { return norm(location.pathname); }
+
+  var allowSet = null;
+  function pageAllowed() { return !!(allowSet && allowSet[currentPath()]); }
+
+  function buildAllow() {
+    var set = {};
+    ALLOW_SEED.forEach(function (p) { set[norm(p)] = 1; });
+    var cached;
+    try { cached = JSON.parse(sessionStorage.getItem("aqcAllow") || "null"); } catch (e) {}
+    if (cached && cached.length) {
+      cached.forEach(function (p) { set[p] = 1; });
+      allowSet = set;
+      return Promise.resolve();
+    }
+    return Promise.all(RENTAL_LANDINGS.map(function (u) {
+      return fetch(u).then(function (r) { return r.text(); }).then(function (html) {
+        var doc = new DOMParser().parseFromString(html, "text/html");
+        Array.prototype.forEach.call(
+          doc.querySelectorAll('.sqs-block-image a[href^="/"]'),
+          function (a) { set[norm(a.getAttribute("href"))] = 1; }
+        );
+      }).catch(function () {});
+    })).then(function () {
+      allowSet = set;
+      try { sessionStorage.setItem("aqcAllow", JSON.stringify(Object.keys(set))); } catch (e) {}
+    });
+  }
 
   /* ---- inject CSS from JS (no HTML field to smart-quote) ---- */
   var CSS = [
@@ -306,7 +344,12 @@
     }).finally(function () { btn.disabled = false; });
   }
 
-  function boot() { injectCSS(); scan(); renderPill(); }
+  function boot() {
+    injectCSS();
+    renderPill();
+    if (allowSet) scan();
+    else buildAllow().then(scan);
+  }
 
   if (document.readyState !== "loading") boot();
   else document.addEventListener("DOMContentLoaded", boot);
