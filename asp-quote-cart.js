@@ -36,6 +36,8 @@
     ".aqc-add-btn.aqc-in{opacity:1;background:#2e7d32;}",
     ".aqc-add-btn svg{width:16px;height:16px;flex:none;}",
     ".aqc-add-btn .aqc-qty{min-width:16px;text-align:center;font-weight:700;}",
+    ".aqc-add-btn .aqc-mini{width:20px;height:20px;border:none;border-radius:50%;background:rgba(255,255,255,.25);color:#fff;cursor:pointer;font:700 15px/1 -apple-system,Segoe UI,Roboto,sans-serif;display:inline-flex;align-items:center;justify-content:center;padding:0;}",
+    ".aqc-add-btn .aqc-mini:hover{background:rgba(255,255,255,.5);}",
     "@media (hover:none){.aqc-add-btn{opacity:1;}}",
     ".aqc-pill{position:fixed;right:20px;bottom:20px;z-index:9998;display:none;align-items:center;gap:8px;background:#111;color:#fff;border:none;border-radius:999px;padding:14px 20px;font:600 15px/1 -apple-system,Segoe UI,Roboto,sans-serif;box-shadow:0 8px 28px rgba(0,0,0,.28);cursor:pointer;}",
     ".aqc-pill.aqc-show{display:inline-flex;}",
@@ -123,7 +125,10 @@
     var q = qtyOf(id);
     if (q > 0) {
       btn.className = "aqc-add-btn aqc-in";
-      btn.innerHTML = CART + '<span class="aqc-qty">' + q + "</span>";
+      btn.innerHTML = CART +
+        '<button type="button" class="aqc-mini aqc-dec" aria-label="Decrease">&minus;</button>' +
+        '<span class="aqc-qty">' + q + "</span>" +
+        '<button type="button" class="aqc-mini aqc-inc" aria-label="Increase">+</button>';
     } else {
       btn.className = "aqc-add-btn";
       btn.innerHTML = CART + "<span>Add to quote</span>";
@@ -141,21 +146,30 @@
     if (getComputedStyle(anchor).position === "static") anchor.style.position = "relative";
 
     var id = idFor(img);
-    var btn = document.createElement("button");
-    btn.type = "button";
-    btn.dataset.aqcId = id;
-    paintBtn(btn, id);
-    btn.addEventListener("click", function (e) {
+    var ctrl = document.createElement("div");
+    ctrl.dataset.aqcId = id;
+    paintBtn(ctrl, id);
+    ctrl.addEventListener("click", function (e) {
       e.preventDefault();
       e.stopPropagation();
       var it = find(id);
-      if (it) { it.qty += 1; }
-      else { cart.push({ id: id, name: nameFor(img), img: imgUrl(img), qty: 1 }); }
+      if (it && e.target.closest(".aqc-dec")) {
+        it.qty -= 1;
+        if (it.qty <= 0) cart = cart.filter(function (x) { return x.id !== id; });
+      } else if (it && e.target.closest(".aqc-inc")) {
+        it.qty += 1;
+      } else if (!it) {
+        cart.push({ id: id, name: nameFor(img), img: imgUrl(img), qty: 1 });
+      } else {
+        return; // already in cart, clicked a neutral area (icon/number)
+      }
       save(cart);
-      paintBtn(btn, id);
+      paintBtn(ctrl, id);
       renderPill();
+      if (overlay && overlay.classList.contains("aqc-show")) renderItems();
+      if (!cart.length) closeModal();
     });
-    anchor.appendChild(btn);
+    anchor.appendChild(ctrl);
   }
 
   function scan() { if (pageAllowed()) document.querySelectorAll(IMG_SELECTORS).forEach(tag); }
