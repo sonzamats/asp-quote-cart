@@ -7,7 +7,7 @@
   "use strict";
 
   /* ============ CONFIG ============ */
-  var FORM_ENDPOINT = "FORMSPREE_ENDPOINT";   // <-- paste your Formspree URL
+  var FORM_ENDPOINT = "https://formspree.io/f/xeebgvjy";
   var STORAGE_KEY   = "aspQuoteCart";
   var IMG_SELECTORS = [
     ".gallery-grid-item img",
