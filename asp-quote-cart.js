@@ -9,6 +9,9 @@
   /* ============ CONFIG ============ */
   var FORM_ENDPOINT = "https://formspree.io/f/xeebgvjy";
   var STORAGE_KEY   = "aspQuoteCart";
+  // Items (matched by lowercase name) that show a multi-option chooser instead of a plain add.
+  // Options are read live from the bullet list under the item, so they stay in sync with the page.
+  var VARIANT_ITEMS = ["projector screens"];
   var IMG_SELECTORS = [
     ".gallery-grid-item img",
     ".gallery-masonry-item img",
@@ -129,30 +132,54 @@
     var t = el.textContent.trim();
     return (t.length >= 2 && t.length <= 70 && t.indexOf("#block") !== 0) ? t : null;
   }
+  // The label element visually centered directly BELOW an image (its grid column).
+  // Column-aware, so multi-column grids never borrow a neighbor's label.
+  function bestLabelBelow(img) {
+    var r = img.getBoundingClientRect();
+    if (!r.width) return null;
+    var scope = img.closest(".fluid-engine") || img.closest("section, main") || document.body;
+    var cx = r.left + r.width / 2;
+    var best = null, bestGap = Infinity;
+    Array.prototype.forEach.call(scope.querySelectorAll("h1,h2,h3,h4,p"), function (el) {
+      var t = shortText(el);
+      if (!t) return;
+      var er = el.getBoundingClientRect();
+      if (!er.width || !er.height) return;
+      if (cx < er.left - 5 || cx > er.right + 5) return;
+      var gap = er.top - r.bottom;
+      if (gap < -20 || gap > 240) return;
+      if (gap < bestGap) { bestGap = gap; best = el; }
+    });
+    return best;
+  }
+  // Options listed (as <li>) directly under an item's name — used for variant items.
+  function variantsFor(img) {
+    var nameEl = bestLabelBelow(img);
+    if (!nameEl) return [];
+    var r = img.getBoundingClientRect(), nr = nameEl.getBoundingClientRect(), cx = r.left + r.width / 2;
+    var scope = img.closest(".fluid-engine") || document.body, out = [];
+    Array.prototype.forEach.call(scope.querySelectorAll("li"), function (el) {
+      var t = el.textContent.trim();
+      if (!t || t.length > 90) return;
+      var er = el.getBoundingClientRect();
+      if (!er.width || cx < er.left - 5 || cx > er.right + 5) return;
+      var gap = er.top - nr.bottom;
+      if (gap < -5 || gap > 450) return;
+      out.push(t);
+    });
+    return out;
+  }
+  function isVariantItem(name) {
+    return !!name && VARIANT_ITEMS.indexOf(name.trim().toLowerCase()) !== -1;
+  }
   function nameFor(img) {
     // 1) true gallery caption, if present
     var fig = img.closest("figure, .gallery-grid-item, .gallery-masonry-item");
     var cap = fig && fig.querySelector("figcaption, .gallery-caption, .gallery-caption-content, .image-caption");
     if (cap && cap.textContent.trim()) return cap.textContent.trim();
-    // 2) the label visually centered directly BELOW this image (its grid column).
-    //    Column-aware, so multi-column grids never borrow a neighbor's name.
-    var r = img.getBoundingClientRect();
-    if (r.width) {
-      var scope = img.closest(".fluid-engine") || img.closest("section, main") || document.body;
-      var cx = r.left + r.width / 2;
-      var best = null, bestGap = Infinity;
-      Array.prototype.forEach.call(scope.querySelectorAll("h1,h2,h3,h4,p"), function (el) {
-        var t = shortText(el);
-        if (!t) return;
-        var er = el.getBoundingClientRect();
-        if (!er.width || !er.height) return;
-        if (cx < er.left - 5 || cx > er.right + 5) return;   // must sit in the image's column
-        var gap = er.top - r.bottom;                          // and just below the image
-        if (gap < -20 || gap > 240) return;
-        if (gap < bestGap) { bestGap = gap; best = t; }
-      });
-      if (best) return best;
-    }
+    // 2) the label centered directly below this image (its grid column)
+    var el = bestLabelBelow(img);
+    if (el) { var lt = shortText(el); if (lt) return lt; }
     // 3) fallback: nearest following text block in DOM order
     var block = img.closest(".sqs-block") || img;
     var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT, null);
@@ -182,7 +209,15 @@
 
   var CART = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 4h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>';
 
+  function variantLines(id) { return cart.filter(function (c) { return c.id.indexOf(id + "::") === 0; }); }
   function paintBtn(btn, id) {
+    var vl = variantLines(id);
+    if (vl.length) {                       // variant item with one or more options chosen
+      var n = vl.reduce(function (s, c) { return s + c.qty; }, 0);
+      btn.className = "aqc-add-btn aqc-in";
+      btn.innerHTML = CART + '<span class="aqc-qty">' + n + "</span>";
+      return;
+    }
     var q = qtyOf(id);
     if (q > 0) {
       btn.className = "aqc-add-btn aqc-in";
@@ -214,6 +249,9 @@
     ctrl.addEventListener("click", function (e) {
       e.preventDefault();
       e.stopPropagation();
+      // resolve the name at click time (page fully laid out); cache it
+      var name = ctrl._aqcName || (ctrl._aqcName = nameFor(img));
+      if (isVariantItem(name)) { openVariants(img, id, name, imgUrl(img)); return; }
       var it = find(id);
       if (it && e.target.closest(".aqc-dec")) {
         it.qty -= 1;
@@ -221,8 +259,7 @@
       } else if (it && e.target.closest(".aqc-inc")) {
         it.qty += 1;
       } else if (!it) {
-        // resolve the name at click time, with the page fully laid out
-        cart.push({ id: id, name: nameFor(img), img: imgUrl(img), qty: 1 });
+        cart.push({ id: id, name: name, img: imgUrl(img), qty: 1 });
       } else {
         return; // already in cart, clicked a neutral area (icon/number)
       }
@@ -241,6 +278,65 @@
     document.querySelectorAll(".aqc-add-btn[data-aqc-id]").forEach(function (b) {
       paintBtn(b, b.dataset.aqcId);
     });
+  }
+
+  /* ---- variant items: a chooser of options, each its own quote line ---- */
+  var vpop;
+  function closeVariants() { if (vpop) vpop.classList.remove("aqc-show"); }
+  function changeVariant(vid, fullName, thumb, delta) {
+    var it = find(vid);
+    if (it) { it.qty += delta; if (it.qty <= 0) cart = cart.filter(function (x) { return x.id !== vid; }); }
+    else if (delta > 0) { cart.push({ id: vid, name: fullName, img: thumb, qty: 1 }); }
+    save(cart);
+    renderPill();
+    syncButtons();
+    if (overlay && overlay.classList.contains("aqc-show")) renderItems();
+    return qtyOf(vid);
+  }
+  function openVariants(img, baseId, baseName, thumb) {
+    var variants = variantsFor(img);
+    if (!variants.length) {                 // no options found — behave like a normal add
+      var it = find(baseId);
+      if (it) it.qty += 1; else cart.push({ id: baseId, name: baseName, img: thumb, qty: 1 });
+      save(cart); renderPill(); syncButtons();
+      if (overlay && overlay.classList.contains("aqc-show")) renderItems();
+      return;
+    }
+    if (!vpop) {
+      vpop = document.createElement("div");
+      vpop.className = "aqc-overlay";
+      document.body.appendChild(vpop);
+      vpop.addEventListener("click", function (e) {
+        if (e.target === vpop || e.target.classList.contains("aqc-close") || e.target.classList.contains("aqc-vdone")) closeVariants();
+      });
+    }
+    vpop.innerHTML =
+      '<div class="aqc-modal" role="dialog" aria-modal="true">' +
+        '<button class="aqc-close" aria-label="Close">&times;</button>' +
+        "<h2></h2>" +
+        '<p class="aqc-sub">Select the option(s) you need — each is added to your quote.</p>' +
+        '<ul class="aqc-items"></ul>' +
+        '<button type="button" class="aqc-submit aqc-vdone">Done</button>' +
+      "</div>";
+    vpop.querySelector("h2").textContent = baseName;
+    var ul = vpop.querySelector(".aqc-items");
+    variants.forEach(function (v) {
+      var vid = baseId + "::" + v;
+      var full = baseName + " — " + v;
+      var li = document.createElement("li");
+      li.className = "aqc-item";
+      li.innerHTML =
+        '<span class="aqc-name"></span>' +
+        '<span class="aqc-stepper"><button type="button" class="aqc-dec">&minus;</button>' +
+        '<span class="aqc-n">' + qtyOf(vid) + "</span>" +
+        '<button type="button" class="aqc-inc">+</button></span>';
+      li.querySelector(".aqc-name").textContent = v;
+      var nEl = li.querySelector(".aqc-n");
+      li.querySelector(".aqc-dec").addEventListener("click", function () { nEl.textContent = changeVariant(vid, full, thumb, -1); });
+      li.querySelector(".aqc-inc").addEventListener("click", function () { nEl.textContent = changeVariant(vid, full, thumb, 1); });
+      ul.appendChild(li);
+    });
+    vpop.classList.add("aqc-show");
   }
 
   var pill;
