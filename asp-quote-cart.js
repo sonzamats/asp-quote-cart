@@ -147,8 +147,8 @@
     ".aqc-stepper .aqc-n{min-width:30px;text-align:center;font-weight:700;}",
     ".aqc-item .aqc-rm{background:none;border:none;color:#c00;cursor:pointer;font-size:13px;margin-left:4px;}",
     ".aqc-empty{color:#888;padding:8px 0 18px;text-align:center;}",
-    ".aqc-empty-head{color:#111;font-weight:700;font-size:16px;margin-bottom:12px;}",
-    ".aqc-empty-cta{display:inline-flex;align-items:center;gap:6px;background:#1f3a66;color:#fff;border-radius:8px;padding:11px 22px;font-weight:600;font-size:15px;text-decoration:none;}",
+    ".aqc-empty-head{color:#111;font-weight:600;font-size:15px;margin-bottom:12px;}",
+    ".aqc-empty-cta{display:inline-flex;align-items:center;gap:6px;background:#1f3a66;color:#fff;border-radius:7px;padding:8px 16px;font-weight:600;font-size:13px;text-decoration:none;}",
     ".aqc-empty-cta:hover{background:#152844;}",
     ".aqc-empty-sub{color:#888;font-size:13px;line-height:1.45;margin-top:14px;}",
     ".aqc-field{margin-bottom:12px;}",
@@ -834,9 +834,9 @@
     var ul = overlay.querySelector(".aqc-items");
     if (!cart.length) {
       ul.innerHTML = '<li class="aqc-empty">' +
-        '<div class="aqc-empty-head">Let\'s build your quote</div>' +
+        '<div class="aqc-empty-head">Browse rentals to add items to your quote</div>' +
         '<a href="/products" class="aqc-empty-cta">Browse Rentals &rarr;</a>' +
-        '<div class="aqc-empty-sub">Already know what you need? Just tell us about your event below &mdash; we\'ll put the quote together for you.</div>' +
+        '<div class="aqc-empty-sub">Or just tell us about your event below and we\'ll build it for you.</div>' +
         "</li>";
       return;
     }
