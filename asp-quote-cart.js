@@ -616,11 +616,11 @@
     if (currentPath() !== FRAMETENT_PATH) return;
     if (document.getElementById("aqc-tent-btn")) return;
     var heading = Array.prototype.filter.call(document.querySelectorAll("h1,h2,h3,h4"), function (h) { return /frame tents/i.test(h.textContent.trim()); })[0];
-    var fe = heading && heading.closest(".fluid-engine");
-    var sec = (heading && heading.closest("section")) || document.querySelector("#sections > section, section.page-section");
-    if (!sec) return;
+    if (!heading) return;
     var cta = document.createElement("div");
     cta.className = "aqc-linen-cta";
+    cta.style.padding = "16px 0 0";        // tight, sits right under the title text
+    cta.style.textAlign = "left";
     var btn = document.createElement("button");
     btn.id = "aqc-tent-btn";
     btn.type = "button";
@@ -628,9 +628,9 @@
     btn.innerHTML = CART + "<span>Build Your Frame Tent</span>";
     btn.addEventListener("click", openFrameTentBuilder);
     cta.appendChild(btn);
-    // place at the top of the title section (above the photo grid), not after it
-    if (fe && fe.parentElement) fe.parentElement.insertBefore(cta, fe);
-    else sec.insertAdjacentElement("afterend", cta);
+    // place directly under the FRAME TENTS title (inside its block)
+    var hblock = heading.closest(".sqs-block-content") || heading.closest(".sqs-block") || heading.parentElement;
+    hblock.appendChild(cta);
   }
   var tbpop;
   function tentLines() { return cart.filter(function (c) { return c.id.indexOf("frametent::") === 0; }); }
