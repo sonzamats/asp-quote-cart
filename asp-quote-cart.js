@@ -331,8 +331,8 @@
 
   function scan() {
     if (!pageAllowed()) return;
+    if (currentPath() === LINEN_PATH) { injectLinenButton(); return; } // linens: builder only, no per-image buttons
     document.querySelectorAll(IMG_SELECTORS).forEach(tag);
-    injectLinenButton();
   }
 
   function syncButtons() {
