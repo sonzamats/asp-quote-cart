@@ -125,12 +125,34 @@
   function totalQty() { return cart.reduce(function (s, i) { return s + i.qty; }, 0); }
 
   /* ---- item name: prefer the product title block, not the alt description ---- */
+  function shortText(el) {
+    var t = el.textContent.trim();
+    return (t.length >= 2 && t.length <= 70 && t.indexOf("#block") !== 0) ? t : null;
+  }
   function nameFor(img) {
     // 1) true gallery caption, if present
     var fig = img.closest("figure, .gallery-grid-item, .gallery-masonry-item");
     var cap = fig && fig.querySelector("figcaption, .gallery-caption, .gallery-caption-content, .image-caption");
     if (cap && cap.textContent.trim()) return cap.textContent.trim();
-    // 2) nearest title/text block AFTER the image block (category-page layout)
+    // 2) the label visually centered directly BELOW this image (its grid column).
+    //    Column-aware, so multi-column grids never borrow a neighbor's name.
+    var r = img.getBoundingClientRect();
+    if (r.width) {
+      var cx = r.left + r.width / 2;
+      var best = null, bestGap = Infinity;
+      Array.prototype.forEach.call(document.querySelectorAll("h1,h2,h3,h4,p"), function (el) {
+        var t = shortText(el);
+        if (!t) return;
+        var er = el.getBoundingClientRect();
+        if (!er.width || !er.height) return;
+        if (cx < er.left - 5 || cx > er.right + 5) return;   // must sit in the image's column
+        var gap = er.top - r.bottom;                          // and just below the image
+        if (gap < -20 || gap > 240) return;
+        if (gap < bestGap) { bestGap = gap; best = t; }
+      });
+      if (best) return best;
+    }
+    // 3) fallback: nearest following text block in DOM order
     var block = img.closest(".sqs-block") || img;
     var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT, null);
     walker.currentNode = block;
@@ -138,11 +160,11 @@
     while ((n = walker.nextNode())) {
       if (block.contains(n)) continue;
       if (/^(H1|H2|H3|H4|P)$/.test(n.tagName)) {
-        var t = n.textContent.trim();
-        if (t.length >= 2 && t.length <= 70 && t.indexOf("#block") !== 0) return t;
+        var t = shortText(n);
+        if (t) return t;
       }
     }
-    // 3) fallbacks
+    // 4) last resort: alt text, then filename
     if (img.alt && img.alt.trim()) return img.alt.trim();
     var src = img.currentSrc || img.src || "";
     var file = src.split("/").pop().split("?")[0].replace(/\.[a-z]+$/i, "");
@@ -184,6 +206,8 @@
     if (getComputedStyle(anchor).position === "static") anchor.style.position = "relative";
 
     var id = idFor(img);
+    var name = nameFor(img);            // resolve once, while layout is stable
+    var thumb = imgUrl(img);
     var ctrl = document.createElement("div");
     ctrl.dataset.aqcId = id;
     paintBtn(ctrl, id);
@@ -197,7 +221,7 @@
       } else if (it && e.target.closest(".aqc-inc")) {
         it.qty += 1;
       } else if (!it) {
-        cart.push({ id: id, name: nameFor(img), img: imgUrl(img), qty: 1 });
+        cart.push({ id: id, name: name, img: thumb, qty: 1 });
       } else {
         return; // already in cart, clicked a neutral area (icon/number)
       }
