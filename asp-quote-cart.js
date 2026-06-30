@@ -44,6 +44,19 @@
     "Olive #146", "Orange #108", "Pink #110", "Powder Blue #157", "Pumpkin #156", "Red #117", "Ruby #144",
     "Seamist #119", "Slate #128", "Teal #122", "Terra Cotta #137", "Turquoise #121"
   ];
+
+  // Video wall page: bespoke per-image mapping (auto-tagging disabled there).
+  // src substring (lowercase) -> product. Unmatched images get no button.
+  var VIDEOWALL_PATH = "/video-wall";
+  var VIDEO_WALL_MAP = [
+    { match: "supports_multiple_installation", type: "wall", name: "ASP CobraLED LED Wall",
+      options: ["3.9mm Indoor/Outdoor", "4.85mm Indoor", "2.6mm Indoor", "1.9mm Fine Detail"] },
+    { match: "upadiii", type: "product", name: "Unilumin 2.6mm Indoor LED Wall" },
+    { match: "novastar.png", type: "product", name: "NovaStar VX-100" },
+    { match: "916789_123964", type: "product", name: "NovaStar VX-100" },
+    { match: "mctrl660", type: "product", name: "NovaStar MCTRL660" },
+    { match: "novastar_thumbnail", type: "product", name: "NovaStar MCTRL660" }
+  ];
   var IMG_SELECTORS = [
     ".gallery-grid-item img",
     ".gallery-masonry-item img",
@@ -336,9 +349,53 @@
     anchor.appendChild(ctrl);
   }
 
+  // Video-wall page: only tag images that map to a product; logos/decorative get nothing.
+  function tagVideoWall(img) {
+    if (img.dataset.aqc) return;
+    if (img.closest("header, footer")) return;
+    var src = (img.currentSrc || img.src || "").toLowerCase();
+    var entry = null;
+    for (var i = 0; i < VIDEO_WALL_MAP.length; i++) {
+      if (src.indexOf(VIDEO_WALL_MAP[i].match) !== -1) { entry = VIDEO_WALL_MAP[i]; break; }
+    }
+    if (!entry) return;
+    img.dataset.aqc = "1";
+    var anchor = img.closest(".sqs-block-image") || img.parentElement;
+    if (!anchor) return;
+    anchor.classList.add("aqc-anchor");
+    if (getComputedStyle(anchor).position === "static") anchor.style.position = "relative";
+    var id = "vw::" + entry.name;          // same id across an item's images -> shared cart line
+    var ctrl = document.createElement("div");
+    ctrl.dataset.aqcId = id;
+    paintBtn(ctrl, id);
+    ctrl.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (entry.type === "wall") { openVariants(img, id, entry.name, imgUrl(img), entry.options); return; }
+      var it = find(id);
+      if (it && e.target.closest(".aqc-dec")) {
+        it.qty -= 1;
+        if (it.qty <= 0) cart = cart.filter(function (x) { return x.id !== id; });
+      } else if (it && e.target.closest(".aqc-inc")) {
+        it.qty += 1;
+      } else if (!it) {
+        cart.push({ id: id, name: entry.name, img: imgUrl(img), qty: 1 });
+      } else {
+        return;
+      }
+      save(cart);
+      syncButtons();                       // keep both images of the same item in sync
+      renderPill();
+      if (overlay && overlay.classList.contains("aqc-show")) renderItems();
+      if (!cart.length) closeModal();
+    });
+    anchor.appendChild(ctrl);
+  }
+
   function scan() {
     if (!pageAllowed()) return;
     if (currentPath() === LINEN_PATH) { injectLinenButton(); return; } // linens: builder only, no per-image buttons
+    if (currentPath() === VIDEOWALL_PATH) { document.querySelectorAll(IMG_SELECTORS).forEach(tagVideoWall); return; }
     document.querySelectorAll(IMG_SELECTORS).forEach(tag);
   }
 
@@ -389,9 +446,9 @@
         function () { renderCustomItems(ul, baseId, baseName, thumb); }));
     });
   }
-  function openVariants(img, baseId, baseName, thumb) {
+  function openVariants(img, baseId, baseName, thumb, explicitOpts) {
     var cfg = variantCfg(baseName);
-    var pageOpts = variantsFor(img);
+    var pageOpts = explicitOpts || variantsFor(img);
     var opts = (cfg.list === false) ? [] : pageOpts;
     var hints = (cfg.list === false) ? pageOpts : [];
     if (!opts.length && !cfg.custom) {       // nothing to choose — normal add
