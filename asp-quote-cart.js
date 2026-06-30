@@ -51,7 +51,7 @@
   var VIDEO_WALL_MAP = [
     { match: "supports_multiple_installation", type: "wall", name: "ASP CobraLED LED Wall",
       options: ["3.9mm Indoor/Outdoor", "4.85mm Indoor", "2.6mm Indoor", "1.9mm Fine Detail"] },
-    { match: "upadiii", type: "product", name: "Unilumin 2.6mm Indoor LED Wall" },
+    { match: "upadiii", type: "wall", name: "Unilumin 2.6mm Indoor LED Wall" }, // dims-only builder (no pitch options)
     // NovaStar.png is the logo (no button); each scaler gets ONE button on its first product image.
     { match: "916789_123964", type: "product", name: "NovaStar VX-1000" },
     { match: "mctrl660", type: "product", name: "NovaStar MCTRL660" }
@@ -604,6 +604,7 @@
     });
   }
   function openWallBuilder(img, baseId, baseName, thumb, sizes) {
+    var hasSizes = !!(sizes && sizes.length);
     if (!wbpop) {
       wbpop = document.createElement("div");
       wbpop.className = "aqc-overlay";
@@ -622,8 +623,8 @@
       '<div class="aqc-modal" role="dialog" aria-modal="true">' +
         '<button class="aqc-close" aria-label="Close">&times;</button>' +
         "<h2></h2>" +
-        '<p class="aqc-sub">Choose a pixel pitch and enter your wall dimensions — add as many as you need.</p>' +
-        '<div class="aqc-lb-field"><label>Pixel pitch</label><select class="aqc-wb-size">' + opts(sizes) + "</select></div>" +
+        '<p class="aqc-sub">' + (hasSizes ? "Choose a pixel pitch and enter your wall dimensions — add as many as you need." : "Enter your wall dimensions — add as many as you need.") + "</p>" +
+        (hasSizes ? '<div class="aqc-lb-field"><label>Pixel pitch</label><select class="aqc-wb-size">' + opts(sizes) + "</select></div>" : "") +
         '<div class="aqc-lb-field"><label>Dimensions</label><input class="aqc-wb-dim" type="text" placeholder="e.g. 12ft x 8ft"></div>' +
         '<div class="aqc-lb-field"><label>Quantity</label><input class="aqc-wb-qty" type="number" min="1" value="1"></div>' +
         '<button type="button" class="aqc-lb-add">Add to quote</button>' +
@@ -634,15 +635,20 @@
     var ul = wbpop.querySelector(".aqc-items");
     renderWallList(ul, baseId, baseName, thumb);
     wbpop.querySelector(".aqc-lb-add").addEventListener("click", function () {
-      var size = wbpop.querySelector(".aqc-wb-size").value;
+      var sizeEl = wbpop.querySelector(".aqc-wb-size");
+      var size = sizeEl ? sizeEl.value : "";
       var dimEl = wbpop.querySelector(".aqc-wb-dim");
       var dim = dimEl.value.trim();
       var qEl = wbpop.querySelector(".aqc-wb-qty");
       var q = Math.max(1, parseInt(qEl.value, 10) || 1);
-      var label = dim ? (size + " / " + dim) : size;
-      var vid = baseId + "::" + label;
+      var parts = [];
+      if (size) parts.push(size);
+      if (dim) parts.push(dim);
+      var label = parts.join(" / ");
+      var vid = label ? (baseId + "::" + label) : baseId;
+      var name = label ? (baseName + " — " + label) : baseName;
       var it = find(vid);
-      if (it) it.qty += q; else cart.push({ id: vid, name: baseName + " — " + label, img: thumb, qty: q });
+      if (it) it.qty += q; else cart.push({ id: vid, name: name, img: thumb, qty: q });
       save(cart);
       renderPill();
       if (overlay && overlay.classList.contains("aqc-show")) renderItems();
