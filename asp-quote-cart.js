@@ -198,6 +198,7 @@
 
   function tag(img) {
     if (img.dataset.aqc) return;
+    if (img.closest("header, footer")) return; // skip logos in header/footer
     if (img.closest("a")) return;              // skip linked category tiles
     if (img.naturalWidth && img.naturalWidth < 60) return;
     img.dataset.aqc = "1";
