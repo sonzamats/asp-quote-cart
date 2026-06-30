@@ -13,12 +13,14 @@
   // Per item:  list  = show the page's bullet list as selectable options (default true)
   //            custom = if a string, also show a free-text field using it as the placeholder
   // Listed options are read live from the page, so they stay in sync.
+  // Keys must be in normalized form (lowercase, straight quotes) — see normName().
   var VARIANT_ITEMS = {
     "projector screens": {},
     "steel deck staging": { custom: "Enter custom dimensions (e.g. 6x8)" },
     "steps": {},
     "stage skirt": { list: false, custom: "Enter the length you need (e.g. 24\")" },
-    "legs/extenders": { list: false, custom: "Enter the size you need" }
+    "legs/extenders": { list: false, custom: "Enter the size you need" },
+    "global truss 12\" box truss": {}
   };
   var IMG_SELECTORS = [
     ".gallery-grid-item img",
@@ -166,28 +168,42 @@
     });
     return best;
   }
-  // Options listed (as <li>) directly under an item's name — used for variant items.
+  // Options listed under an item's name — used for variant items only.
+  // Prefers a <li> bullet list; falls back to short <p> options (e.g. "1m"/"2m"/"3m").
   function variantsFor(img) {
     var nameEl = bestLabelBelow(img);
     if (!nameEl) return [];
     var r = img.getBoundingClientRect(), nr = nameEl.getBoundingClientRect(), cx = r.left + r.width / 2;
-    var scope = img.closest(".fluid-engine") || document.body, out = [];
-    Array.prototype.forEach.call(scope.querySelectorAll("li"), function (el) {
-      var t = el.textContent.trim();
-      if (!t || t.length > 90) return;
-      var er = el.getBoundingClientRect();
-      if (!er.width || cx < er.left - 5 || cx > er.right + 5) return;
-      var gap = er.top - nr.bottom;
-      if (gap < -5 || gap > 450) return;
-      out.push(t);
-    });
-    return out;
+    var scope = img.closest(".fluid-engine") || document.body;
+    function collect(sel, maxLen, maxGap) {
+      var out = [];
+      Array.prototype.forEach.call(scope.querySelectorAll(sel), function (el) {
+        if (el === nameEl) return;
+        var t = el.textContent.trim();
+        if (!t || t.length > maxLen) return;
+        if (el.children.length && el.querySelector("p,li,h1,h2,h3,h4")) return; // skip containers
+        var er = el.getBoundingClientRect();
+        if (!er.width || cx < er.left - 5 || cx > er.right + 5) return;
+        var gap = er.top - nr.bottom;
+        if (gap < -5 || gap > maxGap) return;
+        out.push(t);
+      });
+      return out;
+    }
+    var li = collect("li", 90, 450);
+    return li.length ? li : collect("p", 40, 250);
+  }
+  // Normalize a name for matching: lowercase, straight quotes, single spaces.
+  function normName(s) {
+    return (s || "").toLowerCase()
+      .replace(/[‘’]/g, "'").replace(/[“”]/g, '"')
+      .replace(/\s+/g, " ").trim();
   }
   function isVariantItem(name) {
-    return !!name && VARIANT_ITEMS.hasOwnProperty(name.trim().toLowerCase());
+    return VARIANT_ITEMS.hasOwnProperty(normName(name));
   }
   function variantCfg(name) {
-    return (name && VARIANT_ITEMS[name.trim().toLowerCase()]) || {};
+    return VARIANT_ITEMS[normName(name)] || {};
   }
   function nameFor(img) {
     // 1) true gallery caption, if present
