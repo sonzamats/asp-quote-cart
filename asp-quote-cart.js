@@ -616,6 +616,7 @@
     if (currentPath() !== FRAMETENT_PATH) return;
     if (document.getElementById("aqc-tent-btn")) return;
     var heading = Array.prototype.filter.call(document.querySelectorAll("h1,h2,h3,h4"), function (h) { return /frame tents/i.test(h.textContent.trim()); })[0];
+    var fe = heading && heading.closest(".fluid-engine");
     var sec = (heading && heading.closest("section")) || document.querySelector("#sections > section, section.page-section");
     if (!sec) return;
     var cta = document.createElement("div");
@@ -627,7 +628,9 @@
     btn.innerHTML = CART + "<span>Build Your Frame Tent</span>";
     btn.addEventListener("click", openFrameTentBuilder);
     cta.appendChild(btn);
-    sec.insertAdjacentElement("afterend", cta);
+    // place at the top of the title section (above the photo grid), not after it
+    if (fe && fe.parentElement) fe.parentElement.insertBefore(cta, fe);
+    else sec.insertAdjacentElement("afterend", cta);
   }
   var tbpop;
   function tentLines() { return cart.filter(function (c) { return c.id.indexOf("frametent::") === 0; }); }
