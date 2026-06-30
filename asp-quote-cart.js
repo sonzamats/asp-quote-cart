@@ -20,7 +20,12 @@
     "steps": {},
     "stage skirt": { list: false, custom: "Enter the length you need (e.g. 24\")" },
     "legs/extenders": { list: false, custom: "Enter the size you need" },
-    "global truss 12\" box truss": {}
+    "global truss 12\" box truss": {},
+    "round table": {},
+    "folding table": {},
+    "classroom table": {},
+    "half moon table": {},
+    "cocktail table": {}
   };
 
   /* ---- Linen builder: one configurator (size x material x color x qty) ---- */
