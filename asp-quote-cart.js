@@ -27,7 +27,8 @@
     "half moon table": {},
     "cocktail table": {},
     "chiavari chair gold with cushion": {},
-    "chiavari chair silver with cushion": {}
+    "chiavari chair silver with cushion": {},
+    "asp cobraled led wall": { custom: "Enter custom dimensions (e.g. 12ft x 8ft)" }
   };
 
   /* ---- Linen builder: one configurator (size x material x color x qty) ---- */
