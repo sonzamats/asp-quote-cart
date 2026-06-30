@@ -9,9 +9,17 @@
   /* ============ CONFIG ============ */
   var FORM_ENDPOINT = "https://formspree.io/f/xeebgvjy";
   var STORAGE_KEY   = "aspQuoteCart";
-  // Items (matched by lowercase name) that show a multi-option chooser instead of a plain add.
-  // Options are read live from the bullet list under the item, so they stay in sync with the page.
-  var VARIANT_ITEMS = ["projector screens"];
+  // Items (matched by lowercase name) that show an options chooser instead of a plain add.
+  // Per item:  list  = show the page's bullet list as selectable options (default true)
+  //            custom = if a string, also show a free-text field using it as the placeholder
+  // Listed options are read live from the page, so they stay in sync.
+  var VARIANT_ITEMS = {
+    "projector screens": {},
+    "steel deck staging": { custom: "Enter custom dimensions (e.g. 6x8)" },
+    "steps": {},
+    "stage skirt": { list: false, custom: "Enter the length you need (e.g. 24\")" },
+    "legs/extenders": { list: false, custom: "Enter the size you need" }
+  };
   var IMG_SELECTORS = [
     ".gallery-grid-item img",
     ".gallery-masonry-item img",
@@ -108,7 +116,13 @@
     ".aqc-submit:disabled{opacity:.5;cursor:default;}",
     ".aqc-msg{text-align:center;padding:10px;font-weight:600;}",
     ".aqc-msg.ok{color:#2e7d32;}",
-    ".aqc-msg.err{color:#c00;}"
+    ".aqc-msg.err{color:#c00;}",
+    ".aqc-custom{border-top:1px solid #eee;padding-top:14px;margin-bottom:14px;}",
+    ".aqc-hint{color:#666;font-size:12px;margin-bottom:8px;}",
+    ".aqc-customrow{display:flex;gap:8px;}",
+    ".aqc-customrow input{flex:1;min-width:0;padding:10px 12px;border:1px solid #ccc;border-radius:8px;font:inherit;}",
+    ".aqc-cadd{background:#111;color:#fff;border:none;border-radius:8px;padding:0 18px;cursor:pointer;font:600 14px/1 inherit;}",
+    ".aqc-citems{list-style:none;margin:8px 0 0;padding:0;}"
   ].join("\n");
 
   function injectCSS() {
@@ -170,7 +184,10 @@
     return out;
   }
   function isVariantItem(name) {
-    return !!name && VARIANT_ITEMS.indexOf(name.trim().toLowerCase()) !== -1;
+    return !!name && VARIANT_ITEMS.hasOwnProperty(name.trim().toLowerCase());
+  }
+  function variantCfg(name) {
+    return (name && VARIANT_ITEMS[name.trim().toLowerCase()]) || {};
   }
   function nameFor(img) {
     // 1) true gallery caption, if present
@@ -293,9 +310,40 @@
     if (overlay && overlay.classList.contains("aqc-show")) renderItems();
     return qtyOf(vid);
   }
+  function stepperRow(labelText, vid, fullName, thumb, onZero) {
+    var li = document.createElement("li");
+    li.className = "aqc-item";
+    li.innerHTML =
+      '<span class="aqc-name"></span>' +
+      '<span class="aqc-stepper"><button type="button" class="aqc-dec">&minus;</button>' +
+      '<span class="aqc-n">' + qtyOf(vid) + "</span>" +
+      '<button type="button" class="aqc-inc">+</button></span>';
+    li.querySelector(".aqc-name").textContent = labelText;
+    var nEl = li.querySelector(".aqc-n");
+    li.querySelector(".aqc-dec").addEventListener("click", function () {
+      var q = changeVariant(vid, fullName, thumb, -1);
+      nEl.textContent = q;
+      if (q <= 0 && onZero) onZero();
+    });
+    li.querySelector(".aqc-inc").addEventListener("click", function () { nEl.textContent = changeVariant(vid, fullName, thumb, 1); });
+    return li;
+  }
+  function customLinesFor(baseId) {
+    return cart.filter(function (c) { return c.id.indexOf(baseId + "::custom::") === 0; });
+  }
+  function renderCustomItems(ul, baseId, baseName, thumb) {
+    ul.innerHTML = "";
+    customLinesFor(baseId).forEach(function (c) {
+      ul.appendChild(stepperRow(c.name.replace(baseName + " — ", ""), c.id, c.name, thumb,
+        function () { renderCustomItems(ul, baseId, baseName, thumb); }));
+    });
+  }
   function openVariants(img, baseId, baseName, thumb) {
-    var variants = variantsFor(img);
-    if (!variants.length) {                 // no options found — behave like a normal add
+    var cfg = variantCfg(baseName);
+    var pageOpts = variantsFor(img);
+    var opts = (cfg.list === false) ? [] : pageOpts;
+    var hints = (cfg.list === false) ? pageOpts : [];
+    if (!opts.length && !cfg.custom) {       // nothing to choose — normal add
       var it = find(baseId);
       if (it) it.qty += 1; else cart.push({ id: baseId, name: baseName, img: thumb, qty: 1 });
       save(cart); renderPill(); syncButtons();
@@ -310,32 +358,49 @@
         if (e.target === vpop || e.target.classList.contains("aqc-close") || e.target.classList.contains("aqc-vdone")) closeVariants();
       });
     }
+    var sub = (opts.length && cfg.custom) ? "Choose an option or enter your own — each is added to your quote."
+            : cfg.custom ? "Enter what you need — each is added to your quote."
+            : "Select the option(s) you need — each is added to your quote.";
+    var customHtml = cfg.custom
+      ? '<div class="aqc-custom">' +
+          (hints.length ? '<div class="aqc-hint">Available: ' + hints.join(" • ") + "</div>" : "") +
+          '<div class="aqc-customrow"><input class="aqc-cinput" type="text"><button type="button" class="aqc-cadd">Add</button></div>' +
+          '<ul class="aqc-citems"></ul>' +
+        "</div>"
+      : "";
     vpop.innerHTML =
       '<div class="aqc-modal" role="dialog" aria-modal="true">' +
         '<button class="aqc-close" aria-label="Close">&times;</button>' +
         "<h2></h2>" +
-        '<p class="aqc-sub">Select the option(s) you need — each is added to your quote.</p>' +
-        '<ul class="aqc-items"></ul>' +
+        '<p class="aqc-sub"></p>' +
+        (opts.length ? '<ul class="aqc-items"></ul>' : "") +
+        customHtml +
         '<button type="button" class="aqc-submit aqc-vdone">Done</button>' +
       "</div>";
     vpop.querySelector("h2").textContent = baseName;
-    var ul = vpop.querySelector(".aqc-items");
-    variants.forEach(function (v) {
-      var vid = baseId + "::" + v;
-      var full = baseName + " — " + v;
-      var li = document.createElement("li");
-      li.className = "aqc-item";
-      li.innerHTML =
-        '<span class="aqc-name"></span>' +
-        '<span class="aqc-stepper"><button type="button" class="aqc-dec">&minus;</button>' +
-        '<span class="aqc-n">' + qtyOf(vid) + "</span>" +
-        '<button type="button" class="aqc-inc">+</button></span>';
-      li.querySelector(".aqc-name").textContent = v;
-      var nEl = li.querySelector(".aqc-n");
-      li.querySelector(".aqc-dec").addEventListener("click", function () { nEl.textContent = changeVariant(vid, full, thumb, -1); });
-      li.querySelector(".aqc-inc").addEventListener("click", function () { nEl.textContent = changeVariant(vid, full, thumb, 1); });
-      ul.appendChild(li);
-    });
+    vpop.querySelector(".aqc-sub").textContent = sub;
+    if (opts.length) {
+      var ul = vpop.querySelector(".aqc-items");
+      opts.forEach(function (v) {
+        ul.appendChild(stepperRow(v, baseId + "::" + v, baseName + " — " + v, thumb, null));
+      });
+    }
+    if (cfg.custom) {
+      var input = vpop.querySelector(".aqc-cinput");
+      input.placeholder = cfg.custom;
+      var citems = vpop.querySelector(".aqc-citems");
+      renderCustomItems(citems, baseId, baseName, thumb);
+      var addCustom = function () {
+        var txt = input.value.trim();
+        if (!txt) return;
+        changeVariant(baseId + "::custom::" + txt, baseName + " — " + txt, thumb, 1);
+        input.value = "";
+        renderCustomItems(citems, baseId, baseName, thumb);
+        input.focus();
+      };
+      vpop.querySelector(".aqc-cadd").addEventListener("click", addCustom);
+      input.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); addCustom(); } });
+    }
     vpop.classList.add("aqc-show");
   }
 
