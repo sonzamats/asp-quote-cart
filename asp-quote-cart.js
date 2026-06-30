@@ -138,9 +138,10 @@
     //    Column-aware, so multi-column grids never borrow a neighbor's name.
     var r = img.getBoundingClientRect();
     if (r.width) {
+      var scope = img.closest(".fluid-engine") || img.closest("section, main") || document.body;
       var cx = r.left + r.width / 2;
       var best = null, bestGap = Infinity;
-      Array.prototype.forEach.call(document.querySelectorAll("h1,h2,h3,h4,p"), function (el) {
+      Array.prototype.forEach.call(scope.querySelectorAll("h1,h2,h3,h4,p"), function (el) {
         var t = shortText(el);
         if (!t) return;
         var er = el.getBoundingClientRect();
@@ -206,8 +207,6 @@
     if (getComputedStyle(anchor).position === "static") anchor.style.position = "relative";
 
     var id = idFor(img);
-    var name = nameFor(img);            // resolve once, while layout is stable
-    var thumb = imgUrl(img);
     var ctrl = document.createElement("div");
     ctrl.dataset.aqcId = id;
     paintBtn(ctrl, id);
@@ -221,7 +220,8 @@
       } else if (it && e.target.closest(".aqc-inc")) {
         it.qty += 1;
       } else if (!it) {
-        cart.push({ id: id, name: name, img: thumb, qty: 1 });
+        // resolve the name at click time, with the page fully laid out
+        cart.push({ id: id, name: nameFor(img), img: imgUrl(img), qty: 1 });
       } else {
         return; // already in cart, clicked a neutral area (icon/number)
       }
