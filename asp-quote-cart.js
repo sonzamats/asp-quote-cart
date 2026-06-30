@@ -146,9 +146,11 @@
     ".aqc-stepper button:hover{background:#e8e8e8;}",
     ".aqc-stepper .aqc-n{min-width:30px;text-align:center;font-weight:700;}",
     ".aqc-item .aqc-rm{background:none;border:none;color:#c00;cursor:pointer;font-size:13px;margin-left:4px;}",
-    ".aqc-empty{color:#888;padding:20px 0;text-align:center;}",
-    ".aqc-rentals-link{display:inline-block;background:#1f3a66;color:#fff;border-radius:5px;padding:1px 7px;font-weight:500;font-size:.92em;text-decoration:none;white-space:nowrap;}",
-    ".aqc-rentals-link:hover{background:#152844;}",
+    ".aqc-empty{color:#888;padding:8px 0 18px;text-align:center;}",
+    ".aqc-empty-head{color:#111;font-weight:700;font-size:16px;margin-bottom:12px;}",
+    ".aqc-empty-cta{display:inline-flex;align-items:center;gap:6px;background:#1f3a66;color:#fff;border-radius:8px;padding:11px 22px;font-weight:600;font-size:15px;text-decoration:none;}",
+    ".aqc-empty-cta:hover{background:#152844;}",
+    ".aqc-empty-sub{color:#888;font-size:13px;line-height:1.45;margin-top:14px;}",
     ".aqc-field{margin-bottom:12px;}",
     ".aqc-field label{display:block;font-weight:600;margin-bottom:4px;font-size:13px;}",
     ".aqc-field input,.aqc-field textarea{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #ccc;border-radius:8px;font:inherit;}",
@@ -831,7 +833,11 @@
   function renderItems() {
     var ul = overlay.querySelector(".aqc-items");
     if (!cart.length) {
-      ul.innerHTML = '<li class="aqc-empty">No rentals added yet! Browse the <a href="/products" class="aqc-rentals-link">Rentals</a> tab to add items, or just tell us about your event below and we\'ll build a quote for you.</li>';
+      ul.innerHTML = '<li class="aqc-empty">' +
+        '<div class="aqc-empty-head">Let\'s build your quote</div>' +
+        '<a href="/products" class="aqc-empty-cta">Browse Rentals &rarr;</a>' +
+        '<div class="aqc-empty-sub">Already know what you need? Just tell us about your event below &mdash; we\'ll put the quote together for you.</div>' +
+        "</li>";
       return;
     }
     ul.innerHTML = "";
