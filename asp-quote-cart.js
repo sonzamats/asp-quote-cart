@@ -53,10 +53,10 @@
     { match: "supports_multiple_installation", type: "wall", name: "ASP CobraLED LED Wall",
       options: ["3.9mm Indoor/Outdoor", "4.85mm Indoor", "2.6mm Indoor", "1.9mm Fine Detail"] },
     { match: "upadiii", type: "product", name: "Unilumin 2.6mm Indoor LED Wall" },
-    { match: "novastar.png", type: "product", name: "NovaStar VX-100" },
-    { match: "916789_123964", type: "product", name: "NovaStar VX-100" },
-    { match: "mctrl660", type: "product", name: "NovaStar MCTRL660" },
-    { match: "novastar_thumbnail", type: "product", name: "NovaStar MCTRL660" }
+    // NovaStar.png is the logo (no button); each scaler gets ONE button on its first product image.
+    { match: "916789_123964", type: "product", name: "NovaStar VX-1000" },
+    { match: "mctrl660", type: "product", name: "NovaStar MCTRL660" }
+    // novastar_thumbnail (2nd MCTRL660 image) intentionally not mapped -> no button
   ];
   var IMG_SELECTORS = [
     ".gallery-grid-item img",
