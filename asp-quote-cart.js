@@ -147,6 +147,8 @@
     ".aqc-stepper .aqc-n{min-width:30px;text-align:center;font-weight:700;}",
     ".aqc-item .aqc-rm{background:none;border:none;color:#c00;cursor:pointer;font-size:13px;margin-left:4px;}",
     ".aqc-empty{color:#888;padding:20px 0;text-align:center;}",
+    ".aqc-rentals-link{display:inline-block;background:#1f3a66;color:#fff;border-radius:999px;padding:1px 11px;font-weight:600;text-decoration:none;white-space:nowrap;}",
+    ".aqc-rentals-link:hover{background:#152844;}",
     ".aqc-field{margin-bottom:12px;}",
     ".aqc-field label{display:block;font-weight:600;margin-bottom:4px;font-size:13px;}",
     ".aqc-field input,.aqc-field textarea{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #ccc;border-radius:8px;font:inherit;}",
@@ -829,7 +831,7 @@
   function renderItems() {
     var ul = overlay.querySelector(".aqc-items");
     if (!cart.length) {
-      ul.innerHTML = '<li class="aqc-empty">No rentals added yet — browse any category to add items, or just tell us about your event below and we\'ll build a quote for you.</li>';
+      ul.innerHTML = '<li class="aqc-empty">No rentals added yet! Browse the <a href="/products" class="aqc-rentals-link">Rentals</a> tab to add items, or just tell us about your event below and we\'ll build a quote for you.</li>';
       return;
     }
     ul.innerHTML = "";
