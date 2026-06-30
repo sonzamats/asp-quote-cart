@@ -128,6 +128,8 @@
     "@media (hover:none){.aqc-add-btn{opacity:1;}}",
     ".aqc-pill{position:fixed;right:20px;bottom:20px;z-index:9998;display:none;align-items:center;gap:8px;background:#111;color:#fff;border:none;border-radius:999px;padding:14px 20px;font:600 15px/1 -apple-system,Segoe UI,Roboto,sans-serif;box-shadow:0 8px 28px rgba(0,0,0,.28);cursor:pointer;}",
     ".aqc-pill.aqc-show{display:inline-flex;}",
+    ".aqc-pill.aqc-pill-empty{background:#3a3a3a;font-weight:600;}",
+    ".aqc-pill.aqc-pill-empty:hover{background:#111;}",
     ".aqc-pill .aqc-count{background:#fff;color:#111;border-radius:999px;min-width:22px;height:22px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;}",
     ".aqc-overlay{position:fixed;inset:0;z-index:9999;display:none;background:rgba(0,0,0,.55);}",
     ".aqc-overlay.aqc-show{display:block;}",
@@ -765,8 +767,10 @@
       pill.addEventListener("click", openModal);
       document.body.appendChild(pill);
     }
-    pill.innerHTML = 'Request Quote <span class="aqc-count">' + totalQty() + "</span>";
-    pill.classList.toggle("aqc-show", cart.length > 0);
+    var n = totalQty();
+    pill.innerHTML = n > 0 ? 'Request Quote <span class="aqc-count">' + n + "</span>" : "Request a Quote";
+    pill.classList.toggle("aqc-pill-empty", n === 0);   // subtler look when empty
+    pill.classList.add("aqc-show");                      // always visible
   }
 
   var overlay;
@@ -825,7 +829,7 @@
   function renderItems() {
     var ul = overlay.querySelector(".aqc-items");
     if (!cart.length) {
-      ul.innerHTML = '<li class="aqc-empty">No items yet. Tap the cart icon on any item.</li>';
+      ul.innerHTML = '<li class="aqc-empty">No rentals added yet — browse any category to add items, or just tell us about your event below and we\'ll build a quote for you.</li>';
       return;
     }
     ul.innerHTML = "";
@@ -856,9 +860,9 @@
         msg  = form.querySelector(".aqc-msg"),
         btn  = form.querySelector(".aqc-submit");
     var data = Object.fromEntries(new FormData(form).entries());
-    data.items = cart.map(function (i) { return "- " + i.name + " (x" + i.qty + ")"; }).join("\n");
+    data.items = cart.length ? cart.map(function (i) { return "- " + i.name + " (x" + i.qty + ")"; }).join("\n") : "(no specific items — general inquiry, see comments)";
     data.itemCount = totalQty();
-    data._subject = "Quote request (" + totalQty() + " items) - " + (data.name || "");
+    data._subject = (cart.length ? "Quote request (" + totalQty() + " items)" : "Quote request (general inquiry)") + " - " + (data.name || "");
     btn.disabled = true;
     msg.className = "aqc-msg";
     msg.textContent = "Sending...";
