@@ -147,7 +147,7 @@
     ".aqc-stepper .aqc-n{min-width:30px;text-align:center;font-weight:700;}",
     ".aqc-item .aqc-rm{background:none;border:none;color:#c00;cursor:pointer;font-size:13px;margin-left:4px;}",
     ".aqc-empty{color:#888;padding:20px 0;text-align:center;}",
-    ".aqc-rentals-link{display:inline-block;background:#1f3a66;color:#fff;border-radius:999px;padding:1px 11px;font-weight:600;text-decoration:none;white-space:nowrap;}",
+    ".aqc-rentals-link{display:inline-block;background:#1f3a66;color:#fff;border-radius:5px;padding:1px 7px;font-weight:500;font-size:.92em;text-decoration:none;white-space:nowrap;}",
     ".aqc-rentals-link:hover{background:#152844;}",
     ".aqc-field{margin-bottom:12px;}",
     ".aqc-field label{display:block;font-weight:600;margin-bottom:4px;font-size:13px;}",
