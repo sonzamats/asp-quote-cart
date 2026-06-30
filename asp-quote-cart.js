@@ -25,7 +25,9 @@
     "folding table": {},
     "classroom table": {},
     "half moon table": {},
-    "cocktail table": {}
+    "cocktail table": {},
+    "chiavari chair gold with cushion": {},
+    "chiavari chair silver with cushion": {}
   };
 
   /* ---- Linen builder: one configurator (size x material x color x qty) ---- */
