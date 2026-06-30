@@ -32,6 +32,7 @@
 
   /* ---- Linen builder: one configurator (size x material x color x qty) ---- */
   var LINEN_PATH = "/linens";
+  var FRAMETENT_PATH = "/tents";
   var LINEN_SIZES = ["132 Round", "120 Round", "108 Round", "90 Round", "70 Round", "8 ft Table Cloth", "6 ft Table Cloth", "Table Sache"];
   var LINEN_MATERIALS = ["Polyester", "Satin", "Lamour", "Crinkle Organza", "Spandex", "Taffeta", "Velvet", "Chanton", "Glitz Sequin"];
   var LINEN_COLORS = [
@@ -395,6 +396,7 @@
   function scan() {
     if (!pageAllowed()) return;
     if (currentPath() === LINEN_PATH) { injectLinenButton(); return; } // linens: builder only, no per-image buttons
+    if (currentPath() === FRAMETENT_PATH) { injectFrameTentButton(); return; } // frame tents: builder only
     if (currentPath() === VIDEOWALL_PATH) { document.querySelectorAll(IMG_SELECTORS).forEach(tagVideoWall); return; }
     document.querySelectorAll(IMG_SELECTORS).forEach(tag);
   }
@@ -591,6 +593,90 @@
       qInput.value = "1";
     });
     lbpop.classList.add("aqc-show");
+  }
+
+  /* ---- frame tent builder: one button + size dropdown (sizes read live) ---- */
+  function frameTentSizes() {
+    var re = /^[0-9oO]{1,3}\s*[xX]\s*[0-9oO]{1,3}$/, seen = {}, out = [];
+    Array.prototype.forEach.call(document.querySelectorAll("h1,h2,h3,h4,h5,p,li"), function (el) {
+      if (el.closest("header, footer")) return;
+      var t = el.textContent.trim();
+      if (re.test(t)) {
+        var n = t.replace(/[oO]/g, "0").replace(/\s+/g, "").toUpperCase();
+        if (!seen[n]) { seen[n] = 1; out.push(n); }
+      }
+    });
+    return out;
+  }
+  function tentThumb() {
+    var im = document.querySelector(".sqs-block-image img");
+    return im ? (im.currentSrc || im.src || "").split("?")[0] + "?format=300w" : "";
+  }
+  function injectFrameTentButton() {
+    if (currentPath() !== FRAMETENT_PATH) return;
+    if (document.getElementById("aqc-tent-btn")) return;
+    var heading = Array.prototype.filter.call(document.querySelectorAll("h1,h2,h3,h4"), function (h) { return /frame tents/i.test(h.textContent.trim()); })[0];
+    var sec = (heading && heading.closest("section")) || document.querySelector("#sections > section, section.page-section");
+    if (!sec) return;
+    var cta = document.createElement("div");
+    cta.className = "aqc-linen-cta";
+    var btn = document.createElement("button");
+    btn.id = "aqc-tent-btn";
+    btn.type = "button";
+    btn.className = "aqc-linen-btn";
+    btn.innerHTML = CART + "<span>Build Your Frame Tent</span>";
+    btn.addEventListener("click", openFrameTentBuilder);
+    cta.appendChild(btn);
+    sec.insertAdjacentElement("afterend", cta);
+  }
+  var tbpop;
+  function tentLines() { return cart.filter(function (c) { return c.id.indexOf("frametent::") === 0; }); }
+  function renderTentList(ul, thumb) {
+    ul.innerHTML = "";
+    tentLines().forEach(function (c) {
+      ul.appendChild(stepperRow(c.name.replace("Frame Tent — ", ""), c.id, c.name, thumb,
+        function () { renderTentList(ul, thumb); }));
+    });
+  }
+  function openFrameTentBuilder() {
+    var sizes = frameTentSizes();
+    var thumb = tentThumb();
+    if (!tbpop) {
+      tbpop = document.createElement("div");
+      tbpop.className = "aqc-overlay";
+      document.body.appendChild(tbpop);
+      tbpop.addEventListener("click", function (e) {
+        if (e.target === tbpop || e.target.classList.contains("aqc-close") || e.target.classList.contains("aqc-vdone")) tbpop.classList.remove("aqc-show");
+      });
+    }
+    var optsHtml = sizes.map(function (v) { return '<option value="' + v + '">' + v + "</option>"; }).join("");
+    tbpop.innerHTML =
+      '<div class="aqc-modal" role="dialog" aria-modal="true">' +
+        '<button class="aqc-close" aria-label="Close">&times;</button>' +
+        "<h2>Build Your Frame Tent</h2>" +
+        '<p class="aqc-sub">Choose a tent size (ft) — add as many as you need.</p>' +
+        '<div class="aqc-lb-field"><label>Size (ft)</label><select class="aqc-tb-size">' + optsHtml + "</select></div>" +
+        '<div class="aqc-lb-field"><label>Quantity</label><input class="aqc-tb-qty" type="number" min="1" value="1"></div>' +
+        '<button type="button" class="aqc-lb-add">Add to quote</button>' +
+        '<ul class="aqc-items" style="margin-top:18px"></ul>' +
+        '<button type="button" class="aqc-submit aqc-vdone">Done</button>' +
+      "</div>";
+    var ul = tbpop.querySelector(".aqc-items");
+    renderTentList(ul, thumb);
+    tbpop.querySelector(".aqc-lb-add").addEventListener("click", function () {
+      var size = tbpop.querySelector(".aqc-tb-size").value;
+      var qEl = tbpop.querySelector(".aqc-tb-qty");
+      var q = Math.max(1, parseInt(qEl.value, 10) || 1);
+      var vid = "frametent::" + size;
+      var it = find(vid);
+      if (it) it.qty += q; else cart.push({ id: vid, name: "Frame Tent — " + size, img: thumb, qty: q });
+      save(cart);
+      renderPill();
+      if (overlay && overlay.classList.contains("aqc-show")) renderItems();
+      renderTentList(ul, thumb);
+      qEl.value = "1";
+    });
+    tbpop.classList.add("aqc-show");
   }
 
   /* ---- video-wall builder: pixel-pitch dropdown + typed dimensions ---- */
