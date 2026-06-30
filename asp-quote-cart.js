@@ -22,6 +22,21 @@
     "legs/extenders": { list: false, custom: "Enter the size you need" },
     "global truss 12\" box truss": {}
   };
+
+  /* ---- Linen builder: one configurator (size x material x color x qty) ---- */
+  var LINEN_PATH = "/linens";
+  var LINEN_SIZES = ["132 Round", "120 Round", "108 Round", "90 Round", "70 Round", "8 ft Table Cloth", "6 ft Table Cloth", "Table Sache"];
+  var LINEN_MATERIALS = ["Polyester", "Satin", "Lamour", "Crinkle Organza", "Spandex", "Taffeta", "Velvet", "Chanton", "Glitz Sequin"];
+  var LINEN_COLORS = [
+    "Amethyst #142", "Aqua #118", "Beige #102", "Black #133", "Burgundy #132", "Burnt Orange #148",
+    "Camel #150", "Canteen #152", "Celadon #155", "Charcoal #147", "Cherry Red #159", "Claret #145",
+    "Clover #154", "Copper #106", "Dark Blue #158", "Dusty Rose #111", "Eggplant #153", "Fuchsia #149",
+    "Gold #105", "Goldenrod #141", "Grey #134", "Jade #120", "Kelley #123", "Khaki #138", "Lemon #104",
+    "Light Blue #127", "Light Pink #109", "Lilac #131", "Lime #136", "Maize #103", "Mauve #112",
+    "Mint #140", "Moss #124", "Navy #130", "Neon Green #197", "Neon Tangerine #194", "Neon Yellow #199",
+    "Olive #146", "Orange #108", "Pink #110", "Powder Blue #157", "Pumpkin #156", "Red #117", "Ruby #144",
+    "Seamist #119", "Slate #128", "Teal #122", "Terra Cotta #137", "Turquoise #121"
+  ];
   var IMG_SELECTORS = [
     ".gallery-grid-item img",
     ".gallery-masonry-item img",
@@ -124,7 +139,16 @@
     ".aqc-customrow{display:flex;gap:8px;}",
     ".aqc-customrow input{flex:1;min-width:0;padding:10px 12px;border:1px solid #ccc;border-radius:8px;font:inherit;}",
     ".aqc-cadd{background:#111;color:#fff;border:none;border-radius:8px;padding:0 18px;cursor:pointer;font:600 14px/1 inherit;}",
-    ".aqc-citems{list-style:none;margin:8px 0 0;padding:0;}"
+    ".aqc-citems{list-style:none;margin:8px 0 0;padding:0;}",
+    ".aqc-linen-cta{text-align:center;padding:26px 16px;}",
+    ".aqc-linen-btn{display:inline-flex;align-items:center;gap:9px;background:#111;color:#fff;border:none;border-radius:999px;padding:15px 26px;font:600 16px/1 -apple-system,Segoe UI,Roboto,sans-serif;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.18);}",
+    ".aqc-linen-btn:hover{background:#000;transform:translateY(-1px);}",
+    ".aqc-linen-btn svg{width:18px;height:18px;}",
+    ".aqc-lb-field{margin-bottom:12px;}",
+    ".aqc-lb-field label{display:block;font-weight:600;margin-bottom:4px;font-size:13px;}",
+    ".aqc-lb-field select,.aqc-lb-field input{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #ccc;border-radius:8px;font:inherit;background:#fff;}",
+    ".aqc-lb-add{width:100%;background:#2e7d32;color:#fff;border:none;border-radius:10px;padding:13px;font:600 15px/1 inherit;cursor:pointer;margin-top:4px;}",
+    ".aqc-lb-add:hover{background:#256528;}"
   ].join("\n");
 
   function injectCSS() {
@@ -305,7 +329,11 @@
     anchor.appendChild(ctrl);
   }
 
-  function scan() { if (pageAllowed()) document.querySelectorAll(IMG_SELECTORS).forEach(tag); }
+  function scan() {
+    if (!pageAllowed()) return;
+    document.querySelectorAll(IMG_SELECTORS).forEach(tag);
+    injectLinenButton();
+  }
 
   function syncButtons() {
     document.querySelectorAll(".aqc-add-btn[data-aqc-id]").forEach(function (b) {
@@ -418,6 +446,87 @@
       input.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); addCustom(); } });
     }
     vpop.classList.add("aqc-show");
+  }
+
+  /* ---- linen builder (size x material x color x qty) ---- */
+  function injectLinenButton() {
+    if (currentPath() !== LINEN_PATH) return;
+    if (document.getElementById("aqc-linen-btn")) return;
+    var sec = document.querySelector("#sections > section, section.page-section");
+    if (!sec) return;
+    var cta = document.createElement("div");
+    cta.className = "aqc-linen-cta";
+    var btn = document.createElement("button");
+    btn.id = "aqc-linen-btn";
+    btn.type = "button";
+    btn.className = "aqc-linen-btn";
+    btn.innerHTML = CART + "<span>Build Linen Order</span>";
+    btn.addEventListener("click", openLinenBuilder);
+    cta.appendChild(btn);
+    sec.insertAdjacentElement("afterend", cta);
+  }
+  function linenThumb() {
+    var im = document.querySelector('img[src*="linen-colors"]');
+    if (!im) return "";
+    return (im.currentSrc || im.src || "").split("?")[0] + "?format=300w";
+  }
+  function linenLines() { return cart.filter(function (c) { return c.id.indexOf("linen::") === 0; }); }
+  function renderLinenList(ul, thumb) {
+    ul.innerHTML = "";
+    linenLines().forEach(function (c) {
+      ul.appendChild(stepperRow(c.name.replace("Linen — ", ""), c.id, c.name, thumb,
+        function () { renderLinenList(ul, thumb); }));
+    });
+  }
+  var lbpop;
+  function openLinenBuilder() {
+    var thumb = linenThumb();
+    if (!lbpop) {
+      lbpop = document.createElement("div");
+      lbpop.className = "aqc-overlay";
+      document.body.appendChild(lbpop);
+      lbpop.addEventListener("click", function (e) {
+        if (e.target === lbpop || e.target.classList.contains("aqc-close") || e.target.classList.contains("aqc-vdone")) lbpop.classList.remove("aqc-show");
+      });
+    }
+    function opts(arr) {
+      return arr.map(function (v) {
+        var s = String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+        return '<option value="' + s + '">' + s + "</option>";
+      }).join("");
+    }
+    lbpop.innerHTML =
+      '<div class="aqc-modal" role="dialog" aria-modal="true">' +
+        '<button class="aqc-close" aria-label="Close">&times;</button>' +
+        "<h2>Build Your Linen Order</h2>" +
+        '<p class="aqc-sub">Choose size, material and color — add as many as you need. We confirm color &amp; material availability with your quote.</p>' +
+        '<div class="aqc-lb-field"><label>Size</label><select class="aqc-lb-size">' + opts(LINEN_SIZES) + "</select></div>" +
+        '<div class="aqc-lb-field"><label>Material</label><select class="aqc-lb-mat">' + opts(LINEN_MATERIALS) + "</select></div>" +
+        '<div class="aqc-lb-field"><label>Color</label><select class="aqc-lb-color">' + opts(LINEN_COLORS) + "</select></div>" +
+        '<div class="aqc-lb-field"><label>Quantity</label><input class="aqc-lb-qty" type="number" min="1" value="1"></div>' +
+        '<button type="button" class="aqc-lb-add">Add to quote</button>' +
+        '<ul class="aqc-items" style="margin-top:18px"></ul>' +
+        '<button type="button" class="aqc-submit aqc-vdone">Done</button>' +
+      "</div>";
+    var ul = lbpop.querySelector(".aqc-items");
+    renderLinenList(ul, thumb);
+    lbpop.querySelector(".aqc-lb-add").addEventListener("click", function () {
+      var size = lbpop.querySelector(".aqc-lb-size").value;
+      var mat = lbpop.querySelector(".aqc-lb-mat").value;
+      var color = lbpop.querySelector(".aqc-lb-color").value;
+      var qInput = lbpop.querySelector(".aqc-lb-qty");
+      var q = Math.max(1, parseInt(qInput.value, 10) || 1);
+      var vid = "linen::" + size + "::" + mat + "::" + color;
+      var name = "Linen — " + size + " / " + mat + " / " + color;
+      var it = find(vid);
+      if (it) it.qty += q; else cart.push({ id: vid, name: name, img: thumb, qty: q });
+      save(cart);
+      renderPill();
+      if (overlay && overlay.classList.contains("aqc-show")) renderItems();
+      renderLinenList(ul, thumb);
+      qInput.value = "1";
+    });
+    lbpop.classList.add("aqc-show");
   }
 
   var pill;
