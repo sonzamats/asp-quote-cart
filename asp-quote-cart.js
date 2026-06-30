@@ -621,8 +621,12 @@
     if (!anchor) return;
     var cta = document.createElement("div");
     cta.className = "aqc-linen-cta";
-    cta.style.padding = "14px 0 0";
+    cta.style.padding = "10px 0 0";
     cta.style.textAlign = "center";
+    var orEl = document.createElement("div");
+    orEl.textContent = "OR";
+    orEl.style.cssText = "font:700 12px/1 -apple-system,Segoe UI,Roboto,sans-serif;color:#888;letter-spacing:1px;margin-bottom:10px;";
+    cta.appendChild(orEl);
     var btn = document.createElement("button");
     btn.id = "aqc-tent-btn";
     btn.type = "button";
