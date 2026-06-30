@@ -27,8 +27,7 @@
     "half moon table": {},
     "cocktail table": {},
     "chiavari chair gold with cushion": {},
-    "chiavari chair silver with cushion": {},
-    "asp cobraled led wall": { custom: "Enter custom dimensions (e.g. 12ft x 8ft)" }
+    "chiavari chair silver with cushion": {}
   };
 
   /* ---- Linen builder: one configurator (size x material x color x qty) ---- */
@@ -372,7 +371,7 @@
     ctrl.addEventListener("click", function (e) {
       e.preventDefault();
       e.stopPropagation();
-      if (entry.type === "wall") { openVariants(img, id, entry.name, imgUrl(img), entry.options); return; }
+      if (entry.type === "wall") { openWallBuilder(img, id, entry.name, imgUrl(img), entry.options); return; }
       var it = find(id);
       if (it && e.target.closest(".aqc-dec")) {
         it.qty -= 1;
@@ -592,6 +591,66 @@
       qInput.value = "1";
     });
     lbpop.classList.add("aqc-show");
+  }
+
+  /* ---- video-wall builder: pixel-pitch dropdown + typed dimensions ---- */
+  var wbpop;
+  function wallLines(baseId) { return cart.filter(function (c) { return c.id.indexOf(baseId + "::") === 0; }); }
+  function renderWallList(ul, baseId, baseName, thumb) {
+    ul.innerHTML = "";
+    wallLines(baseId).forEach(function (c) {
+      ul.appendChild(stepperRow(c.name.replace(baseName + " — ", ""), c.id, c.name, thumb,
+        function () { renderWallList(ul, baseId, baseName, thumb); }));
+    });
+  }
+  function openWallBuilder(img, baseId, baseName, thumb, sizes) {
+    if (!wbpop) {
+      wbpop = document.createElement("div");
+      wbpop.className = "aqc-overlay";
+      document.body.appendChild(wbpop);
+      wbpop.addEventListener("click", function (e) {
+        if (e.target === wbpop || e.target.classList.contains("aqc-close") || e.target.classList.contains("aqc-vdone")) wbpop.classList.remove("aqc-show");
+      });
+    }
+    function opts(arr) {
+      return arr.map(function (v) {
+        var s = String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+        return '<option value="' + s + '">' + s + "</option>";
+      }).join("");
+    }
+    wbpop.innerHTML =
+      '<div class="aqc-modal" role="dialog" aria-modal="true">' +
+        '<button class="aqc-close" aria-label="Close">&times;</button>' +
+        "<h2></h2>" +
+        '<p class="aqc-sub">Choose a pixel pitch and enter your wall dimensions — add as many as you need.</p>' +
+        '<div class="aqc-lb-field"><label>Pixel pitch</label><select class="aqc-wb-size">' + opts(sizes) + "</select></div>" +
+        '<div class="aqc-lb-field"><label>Dimensions</label><input class="aqc-wb-dim" type="text" placeholder="e.g. 12ft x 8ft"></div>' +
+        '<div class="aqc-lb-field"><label>Quantity</label><input class="aqc-wb-qty" type="number" min="1" value="1"></div>' +
+        '<button type="button" class="aqc-lb-add">Add to quote</button>' +
+        '<ul class="aqc-items" style="margin-top:18px"></ul>' +
+        '<button type="button" class="aqc-submit aqc-vdone">Done</button>' +
+      "</div>";
+    wbpop.querySelector("h2").textContent = baseName;
+    var ul = wbpop.querySelector(".aqc-items");
+    renderWallList(ul, baseId, baseName, thumb);
+    wbpop.querySelector(".aqc-lb-add").addEventListener("click", function () {
+      var size = wbpop.querySelector(".aqc-wb-size").value;
+      var dimEl = wbpop.querySelector(".aqc-wb-dim");
+      var dim = dimEl.value.trim();
+      var qEl = wbpop.querySelector(".aqc-wb-qty");
+      var q = Math.max(1, parseInt(qEl.value, 10) || 1);
+      var label = dim ? (size + " / " + dim) : size;
+      var vid = baseId + "::" + label;
+      var it = find(vid);
+      if (it) it.qty += q; else cart.push({ id: vid, name: baseName + " — " + label, img: thumb, qty: q });
+      save(cart);
+      renderPill();
+      if (overlay && overlay.classList.contains("aqc-show")) renderItems();
+      renderWallList(ul, baseId, baseName, thumb);
+      qEl.value = "1";
+      dimEl.value = "";
+    });
+    wbpop.classList.add("aqc-show");
   }
 
   var pill;
