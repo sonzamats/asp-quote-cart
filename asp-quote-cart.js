@@ -615,22 +615,26 @@
   function injectFrameTentButton() {
     if (currentPath() !== FRAMETENT_PATH) return;
     if (document.getElementById("aqc-tent-btn")) return;
-    var heading = Array.prototype.filter.call(document.querySelectorAll("h1,h2,h3,h4"), function (h) { return /frame tents/i.test(h.textContent.trim()); })[0];
-    if (!heading) return;
+    // prefer placing under the "Call for quote..." line; fall back to the FRAME TENTS title
+    var anchor = Array.prototype.filter.call(document.querySelectorAll("h1,h2,h3,h4,p"), function (el) { return /call for quote/i.test(el.textContent.trim()); })[0]
+              || Array.prototype.filter.call(document.querySelectorAll("h1,h2,h3,h4"), function (h) { return /frame tents/i.test(h.textContent.trim()); })[0];
+    if (!anchor) return;
     var cta = document.createElement("div");
     cta.className = "aqc-linen-cta";
-    cta.style.padding = "16px 0 0";        // tight, sits right under the title text
-    cta.style.textAlign = "left";
+    cta.style.padding = "14px 0 0";
+    cta.style.textAlign = "center";
     var btn = document.createElement("button");
     btn.id = "aqc-tent-btn";
     btn.type = "button";
     btn.className = "aqc-linen-btn";
+    btn.style.padding = "9px 18px";        // small
+    btn.style.fontSize = "13px";
+    btn.style.boxShadow = "none";
     btn.innerHTML = CART + "<span>Build Your Frame Tent</span>";
     btn.addEventListener("click", openFrameTentBuilder);
     cta.appendChild(btn);
-    // place directly under the FRAME TENTS title (inside its block)
-    var hblock = heading.closest(".sqs-block-content") || heading.closest(".sqs-block") || heading.parentElement;
-    hblock.appendChild(cta);
+    var blk = anchor.closest(".sqs-block-content") || anchor.closest(".sqs-block") || anchor.parentElement;
+    blk.appendChild(cta);
   }
   var tbpop;
   function tentLines() { return cart.filter(function (c) { return c.id.indexOf("frametent::") === 0; }); }
